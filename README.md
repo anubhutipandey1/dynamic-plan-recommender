@@ -85,7 +85,7 @@ Plans are ranked in descending order of score. The user selects Top 2, Top 3, or
 | CSV upload for customer data | Real-world sales teams maintain customer lists in spreadsheets — uploading a CSV is far faster than entering rows manually. Auto-detects headers, validates each row, and shows specific error messages on bad data |
 | Currency selector ($ / ₹) | SaaS businesses operate across markets — a single toggle switches all price displays between USD and INR without re-entering any data |
 | Configurable weights via sliders | Different businesses prioritise differently — a budget-focused team would increase W3, an enterprise sales team might increase W4 |
-| Normalised scoring | renewal rate of plan with annual billing frequency vs a plan with monthly billing frequebcy can't be put on same scale, hnece the addition of Frequency multiplier |
+| Normalised scoring | renewal rate of plan with annual billing frequency vs a plan with monthly billing frequency can't be put on same scale, hnece the addition of Frequency multiplier |
 | Customer ID text input instead of dropdown | A dropdown grows unwieldy as the customer list scales. A text input is faster for users who already know the ID, and shows a specific inline error if the ID isn't found |
 | Top N as toggle buttons (Top 2 / Top 3 / Top 5) | A sales rep needs the top 2–3 options to present, not a long ranked table. Fixed buttons are faster to use than a dropdown for a small set of choices |
 
@@ -117,29 +117,25 @@ The `current_plan_id` column is optional — rows without it will have Category 
 
 ## Roadmap: From Rule-Based to ML
 
-This prototype uses a manually weighted scoring model. The weights reflect judgment — not data. Here is the logical progression to a production ML recommendation engine.
+This prototype uses a manually weighted scoring model. The weights reflect person using the recommender. Here is the logical progression to a production ML recommendation engine.
 
 ### Stage 1 — Better data, same model
 *The most important step before any ML.*
 
-The current affordability metric uses historical revenue as a proxy for spending capacity, which is imperfect. Before introducing ML, the inputs need to be improved:
-- Add a **budget / willingness-to-pay** field to customer data
+The current affordability metric uses historical revenue to define spending capacity, which is imperfect. Before introducing ML, the inputs need to be improved:
+- Add a **/ willingness-to-pay** field to customer data
 - Track **actual conversion outcomes** — did the customer accept the recommendation, upgrade, or churn?
 - Add **plan usage intensity** — heavy users are upsell candidates; light users are churn risks
 
-Without labelled outcome data, no ML model can learn anything meaningful.
 
 ### Stage 2 — Learn the weights from data
 *The smallest meaningful ML upgrade.*
 
 Instead of manually setting W1–W4, a **Logistic Regression** model learns the optimal weights from historical conversion data. For each past recommendation, the model sees: what were the feature values, and did the customer convert (yes/no)? It finds the weight combination that best predicts conversion.
 
-Why logistic regression first: it is explainable (the learned coefficients are directly interpretable), it needs relatively little data (a few hundred labelled examples), and it directly answers the business question — *what combination of factors predicts whether a customer subscribes?*
-
 In a production version of this tool, the W1–W4 sliders would be replaced by model-derived coefficients, retrained periodically as new conversion data comes in.
 
 ### Stage 3 — Collaborative filtering
-*What Netflix, Spotify, and Amazon use at their core.*
 
 Instead of scoring plans by fixed rules, the model finds customers with similar profiles and recommends what *they* chose:
 
@@ -162,13 +158,11 @@ This requires a full customer–plan interaction history (not just the current p
 
 This is a portfolio prototype, not a production system.
 
-**Affordability uses revenue-from-customer, not customer budget.** Average revenue is computed from what the customer has historically paid — not their actual spending capacity. A long-tenure customer who spent $48,000 over 10 renewals looks "high-value", but that doesn't mean they can afford a more expensive plan. In a real system, budget data or explicit willingness-to-pay signals would be needed.
-
-**No data persistence.** All data resets on page refresh. A production version would need a backend, database, or at minimum localStorage to retain sessions between uses.
+**Affordability uses revenue-from-customer, not customer budget.** Average revenue is computed from what the customer has historically paid and not their actual spending capacity. A long-tenure customer who spent $48,000 over 10 renewals looks "high-value", but that doesn't mean they can afford a more expensive plan. In a real system, budget data or explicit willingness-to-pay signals would be needed.
 
 **Weight total is capped at 10.** The four sliders must sum to exactly 10 or less — the UI enforces this by clamping a slider if you try to exceed it. This keeps scores on a consistent, comparable scale across different configurations. Weights summing to less than 10 are valid but mean some scoring "budget" is unused.
 
-**Renewal rate is now frequency-adjusted.** The formula applies a multiplier based on billing cycle — Monthly × 1, Quarterly × 2, Annual × 4. This means an annual plan renewing at 80% scores higher than a monthly plan at the same raw rate, correctly reflecting the stronger customer commitment a longer billing cycle represents. The multiplier values are opinionated (doubling per tier) and could be calibrated further with real retention data.
+**Renewal rate is now frequency-adjusted.** The formula applies a multiplier based on billing cycle — Monthly × 1, Quarterly × 2, Annual × 4. This means an annual plan renewing at 80% scores higher than a monthly plan at the same raw rate, correctly reflecting the stronger customer commitment a longer billing cycle represents. 
 
 **Single active plan per customer assumed.** The mapping table supports one plan per customer. Real customers may have multiple concurrent subscriptions across product lines, which would require a more complex matching model.
 
@@ -176,15 +170,9 @@ This is a portfolio prototype, not a production system.
 
 ---
 
-## Tech
-
-Pure HTML, CSS, and vanilla JavaScript. Single self-contained file. No frameworks, no libraries, no build step, no backend.
-
----
-
 ## What This Project Demonstrates
 
-As a PM, I wrote the product specification for this engine — defining the data inputs, scoring formula, and output format. I then translated that spec directly into a working prototype, iterated on it based on critical self-review, and documented both the decisions and the limitations honestly.
+As a PM, I wrote the product specification for this engine defining the data inputs, scoring formula, and output format. I then translated that spec directly into a working prototype, iterated on it based on critical self-review, and documented both the decisions and the limitations.
 
 This project reflects how I think about product work:
 - Starting with a clearly defined problem and user need
