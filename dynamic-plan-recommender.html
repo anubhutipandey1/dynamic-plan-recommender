@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Plan Recommendation Engine</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0ede8;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    h2 { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 1rem; }
+    p.subtitle { font-size: 13px; color: #6b6b6b; margin-top: 4px; }
+
+    .page-header { max-width: 1100px; margin: 0 auto 1.5rem; }
+
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.5rem;
+      border: 1px solid #e0ddd6;
+    }
+
+    .full-width { grid-column: 1 / -1; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+    .tab {
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px solid #e0ddd6; background: #f5f4f0;
+      color: #6b6b6b; transition: all 0.15s;
+    }
+    .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: #f5f4f0; }
+    th { text-align: left; padding: 8px 10px; font-weight: 600; color: #1a1a1a; border-bottom: 1px solid #e0ddd6; font-size: 12px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0ede8; color: #333; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #faf9f7; }
+
+    /* Inputs inside table */
+    td input[type="number"], td input[type="text"], td select {
+      width: 100%; border: 1px solid #e0ddd6; border-radius: 6px;
+      padding: 5px 8px; font-size: 13px; background: #fff;
+      color: #1a1a1a; outline: none;
+    }
+    td input:focus, td select:focus { border-color: #888; }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 20px; border-radius: 9px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: none; transition: opacity 0.15s;
+    }
+    .btn-primary { background: #1a1a1a; color: #fff; }
+    .btn-primary:hover { opacity: 0.82; }
+    .btn-secondary { background: #f5f4f0; color: #444; border: 1px solid #e0ddd6; }
+    .btn-secondary:hover { background: #ebe9e4; }
+    .btn-danger { background: #fff0f0; color: #c0392b; border: 1px solid #f5c6c6; }
+    .btn-danger:hover { background: #ffe0e0; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap; align-items: center; }
+
+    /* Weight sliders */
+    .weight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 500px) { .weight-grid { grid-template-columns: 1fr; } }
+
+    .weight-item label { font-size: 13px; color: #444; display: block; margin-bottom: 4px; }
+    .weight-item .w-row { display: flex; align-items: center; gap: 10px; }
+    .weight-item input[type="range"] { flex: 1; accent-color: #1a1a1a; }
+    .weight-item .w-val {
+      font-size: 14px; font-weight: 600; color: #1a1a1a;
+      min-width: 32px; text-align: right;
+    }
+    .weight-total { margin-top: 0.75rem; font-size: 13px; color: #6b6b6b; }
+    .weight-total span { font-weight: 600; color: #1a1a1a; }
+
+    /* Top N selector */
+    .topn-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .topn-row label { font-size: 13px; color: #555; }
+    .topn-row select { padding: 6px 10px; border-radius: 8px; border: 1px solid #e0ddd6; font-size: 13px; background: #fff; }
+
+    /* Customer selector */
+    .customer-select-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .customer-select-row label { font-size: 13px; color: #555; }
+    .customer-select-row select { padding: 6px 10px; border-radius: 8px; border: 1px solid #e0ddd6; font-size: 13px; background: #fff; min-width: 180px; }
+
+    /* Result cards */
+    .result-grid { display: flex; flex-direction: column; gap: 10px; }
+    .result-item {
+      background: #faf9f7; border-radius: 10px; border: 1px solid #e0ddd6;
+      padding: 1rem 1.1rem; display: flex; align-items: center; gap: 12px;
+    }
+    .result-item.rank-1 { border: 2px solid #2d6ef7; background: #f0f4ff; }
+    .result-item.rank-2 { border: 1.5px solid #9b8fcc; background: #f8f6ff; }
+    .result-item.rank-3 { border: 1.5px solid #5aaa88; background: #f3fbf7; }
+
+    .rank-badge {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .rank-1 .rank-badge { background: #2d6ef7; color: #fff; }
+    .rank-2 .rank-badge { background: #7b6cc0; color: #fff; }
+    .rank-3 .rank-badge { background: #3a9870; color: #fff; }
+    .rank-other .rank-badge { background: #ddd; color: #555; }
+
+    .result-info { flex: 1; }
+    .result-plan-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+    .result-plan-meta { font-size: 12px; color: #6b6b6b; margin-top: 2px; }
+
+    .score-bar-wrap { flex: 1; max-width: 180px; }
+    .score-bar-bg { height: 6px; background: #e5e2dc; border-radius: 3px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 3px; background: #2d6ef7; transition: width 0.5s ease; }
+    .rank-2 .score-bar-fill { background: #7b6cc0; }
+    .rank-3 .score-bar-fill { background: #3a9870; }
+    .rank-other .score-bar-fill { background: #aaa; }
+    .score-label { font-size: 12px; color: #888; margin-top: 3px; text-align: right; }
+
+    .score-num { font-size: 16px; font-weight: 700; color: #1a1a1a; min-width: 40px; text-align: right; }
+
+    /* Score breakdown */
+    .breakdown { font-size: 11px; color: #888; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .breakdown span { background: #eee; padding: 2px 7px; border-radius: 10px; }
+
+    /* Category badge */
+    .cat-badge {
+      display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .cat-budget { background: #e8f5e8; color: #2e7d32; }
+    .cat-standard { background: #e8f0ff; color: #1a4cc0; }
+    .cat-premium { background: #fff0e8; color: #b05000; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 2rem; color: #aaa; font-size: 14px; }
+
+    /* Info note */
+    .info-note { font-size: 12px; color: #888; background: #f5f4f0; border-radius: 8px; padding: 8px 12px; margin-top: 0.75rem; line-height: 1.5; }
+    .info-note code { font-family: monospace; background: #e8e6e0; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+    /* Top N buttons */
+    .topn-btn {
+      padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px solid #e0ddd6; background: #f5f4f0;
+      color: #6b6b6b; transition: all 0.15s;
+    }
+    .topn-btn:hover { background: #ebe9e4; border-color: #ccc; }
+    .topn-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+    /* Why explanation */
+    .why-text { font-size: 13px; color: #444; margin-top: 6px; line-height: 1.55; font-style: italic; border-left: 3px solid #e0ddd6; padding-left: 10px; }
+    .rank-1 .why-text { border-color: #2d6ef7; }
+    .rank-2 .why-text { border-color: #7b6cc0; }
+    .rank-3 .why-text { border-color: #3a9870; }
+
+    /* Section divider */
+    .section-label { font-size: 11px; color: #9b9b9b; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 0.6rem; margin-top: 1.25rem; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1>Dynamic Plan Recommendation Engine</h1>
+      <p class="subtitle">Enter customer & plan data, tune the weights, and get ranked plan recommendations in real time.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:8px 14px;">
+      <label style="font-size:12px;color:#6b6b6b;white-space:nowrap;">Currency:</label>
+      <select id="currency-select" onchange="onCurrencyChange()" style="padding:4px 10px;border-radius:7px;border:1px solid #e0ddd6;font-size:13px;background:#fff;font-weight:500;">
+        <option value="USD">$ USD</option>
+        <option value="INR">₹ INR</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: Customer Data -->
+  <div class="card">
+    <h2>Customer Data</h2>
+
+    <div style="margin-bottom:0.75rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+        ↑ Upload CSV
+        <input type="file" id="csv-upload" accept=".csv" style="display:none;" onchange="handleCSVUpload(event)">
+      </label>
+      <span style="font-size:12px;color:#9b9b9b;">or add rows manually below</span>
+    </div>
+    <div id="csv-error" style="display:none;font-size:12px;color:#c0392b;background:#fff0f0;border-radius:6px;padding:6px 10px;margin-bottom:8px;"></div>
+
+    <table id="customer-table">
+      <thead>
+        <tr>
+          <th>Customer ID</th>
+          <th>Lifetime Revenue (<span class="currency-sym">$</span>)</th>
+          <th>Renewal Count</th>
+          <th>Current Plan ID</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="customer-body"></tbody>
+    </table>
+    <div class="btn-row">
+      <button class="btn btn-secondary btn-sm" onclick="addCustomer()">+ Add customer</button>
+    </div>
+    <div class="info-note">
+      Average Revenue = Lifetime Revenue ÷ Renewal Count (used for affordability scoring).<br>
+      Current Plan ID enables accurate Category Match scoring. Leave blank if unknown.<br>
+      CSV format: <code>customer_id, lifetime_revenue, renewal_count, current_plan_id</code>
+    </div>
+  </div>
+
+  <!-- RIGHT: Plan Data -->
+  <div class="card">
+    <h2>Plan Data</h2>
+    <table id="plan-table">
+      <thead>
+        <tr>
+          <th>Plan ID</th>
+          <th>Category</th>
+          <th>Price (<span class="currency-sym">$</span>)</th>
+          <th>Billing</th>
+          <th>Active Subs</th>
+          <th>Total Subs</th>
+          <th>Total Revenue (<span class="currency-sym">$</span>)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="plan-body"></tbody>
+    </table>
+    <div class="btn-row">
+      <button class="btn btn-secondary btn-sm" onclick="addPlan()">+ Add plan</button>
+    </div>
+    <div class="info-note">
+      Popularity = Active Subs. Renewal Rate = (Active Subs ÷ Total Subs) × Frequency Multiplier — annual plans are weighted higher than monthly to reflect stronger customer commitment.
+    </div>
+  </div>
+
+  <!-- Weights -->
+  <div class="card">
+    <h2>Recommendation Weights</h2>
+    <p style="font-size:13px;color:#6b6b6b;margin-bottom:1rem;">Distribute 10 points across the four parameters. Total must not exceed 10.</p>
+    <div class="weight-grid">
+      <div class="weight-item">
+        <label>W1 — Popularity of plan</label>
+        <div class="w-row">
+          <input type="range" min="0" max="10" step="1" value="3" id="w1" oninput="updateWeights('w1')">
+          <span class="w-val" id="w1-val">3</span>
+        </div>
+      </div>
+      <div class="weight-item">
+        <label>W2 — Renewal rate of plan</label>
+        <div class="w-row">
+          <input type="range" min="0" max="10" step="1" value="3" id="w2" oninput="updateWeights('w2')">
+          <span class="w-val" id="w2-val">3</span>
+        </div>
+      </div>
+      <div class="weight-item">
+        <label>W3 — Price affordability</label>
+        <div class="w-row">
+          <input type="range" min="0" max="10" step="1" value="2" id="w3" oninput="updateWeights('w3')">
+          <span class="w-val" id="w3-val">2</span>
+        </div>
+      </div>
+      <div class="weight-item">
+        <label>W4 — Category match</label>
+        <div class="w-row">
+          <input type="range" min="0" max="10" step="1" value="2" id="w4" oninput="updateWeights('w4')">
+          <span class="w-val" id="w4-val">2</span>
+        </div>
+      </div>
+    </div>
+    <div class="weight-total" style="margin-top:0.75rem;display:flex;align-items:center;gap:8px;">
+      <span>Total: <span id="weight-total" style="font-weight:600;">10</span> / 10</span>
+      <span id="weight-remaining" style="font-size:12px;color:#3a9870;font-weight:500;">✓ balanced</span>
+    </div>
+    <div id="weight-error" style="display:none;font-size:12px;color:#c0392b;background:#fff0f0;border-radius:6px;padding:6px 10px;margin-top:6px;">
+      Total weight exceeds 10. Please reduce one or more sliders.
+    </div>
+    <div class="info-note" style="margin-top:0.75rem;">
+      Score = W1 × Popularity + W2 × Renewal Rate + W3 × Affordability + W4 × Category Match
+    </div>
+  </div>
+
+  <!-- Run recommendation -->
+  <div class="card">
+    <h2>Run Recommendation</h2>
+    <div class="customer-select-row">
+      <label>Customer ID:</label>
+      <input type="text" id="customer-input" placeholder="e.g. C001" style="padding:6px 10px;border-radius:8px;border:1px solid #e0ddd6;font-size:13px;background:#fff;min-width:160px;outline:none;" oninput="document.getElementById('customer-id-error').style.display='none'">
+    </div>
+    <div id="customer-id-error" style="display:none;font-size:12px;color:#c0392b;margin-bottom:0.75rem;">Customer ID not found. Please check and try again.</div>
+    <div class="topn-row">
+      <label>Show top N plans:</label>
+      <div style="display:flex;gap:6px;">
+        <button class="topn-btn active" data-n="2" onclick="selectTopN(this)">Top 2</button>
+        <button class="topn-btn" data-n="3" onclick="selectTopN(this)">Top 3</button>
+        <button class="topn-btn" data-n="5" onclick="selectTopN(this)">Top 5</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="runRecommendation()">Generate recommendations</button>
+      <button class="btn btn-secondary" onclick="clearResults()">Clear</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card full-width">
+    <h2>Recommended Plans</h2>
+    <div id="results-area"><div class="empty">Run a recommendation to see results here.</div></div>
+  </div>
+
+</div>
+
+<script>
+  let customers = [];
+  let plans = [];
+  let custIdCounter = 1;
+  let planIdCounter = 1;
+
+  // ---- Seed data (realistic scenario: B2B SaaS, ~600 customers) ----
+  function seedData() {
+    customers = [
+      { id: 'C001', revenue: 5880,  renewals: 4,  currentPlanId: 'P003' },  // avg $1470/renewal — mid-range, on Standard
+      { id: 'C002', revenue: 1188,  renewals: 2,  currentPlanId: 'P001' },  // avg $594/renewal  — budget-conscious
+      { id: 'C003', revenue: 47880, renewals: 10, currentPlanId: 'P005' },  // avg $4788/renewal — premium, long tenure
+      { id: 'C004', revenue: 2376,  renewals: 3,  currentPlanId: 'P003' },  // avg $792/renewal  — standard user
+      { id: 'C005', revenue: 598,   renewals: 1,  currentPlanId: 'P002' },  // avg $598/renewal  — new, Budget tier
+    ];
+    custIdCounter = 6;
+
+    // Prices reflect realistic SaaS tiers. Renewal rates derived from real-world SaaS benchmarks:
+    // Budget ~75%, Standard ~80-85%, Premium ~85-90%
+    // Frequency multiplier: Monthly=1, Quarterly=2, Annual=4 — annual plans reflect stronger commitment
+    plans = [
+      { id: 'P001', category: 'Budget',   price: 49,   freq: 'Monthly',    activeSubs: 318, totalSubs: 420, totalRevenue: 186984  },
+      { id: 'P002', category: 'Budget',   price: 79,   freq: 'Monthly',    activeSubs: 195, totalSubs: 260, totalRevenue: 154440  },
+      { id: 'P003', category: 'Standard', price: 149,  freq: 'Monthly',    activeSubs: 442, totalSubs: 530, totalRevenue: 658580  },
+      { id: 'P004', category: 'Standard', price: 199,  freq: 'Quarterly',  activeSubs: 374, totalSubs: 440, totalRevenue: 744920  },
+      { id: 'P005', category: 'Premium',  price: 399,  freq: 'Annual',     activeSubs: 118, totalSubs: 135, totalRevenue: 471420  },
+      { id: 'P006', category: 'Premium',  price: 599,  freq: 'Annual',     activeSubs: 52,  totalSubs: 58,  totalRevenue: 311480  },
+    ];
+    planIdCounter = 7;
+
+    renderCustomers();
+    renderPlans();
+    refreshCustomerSelect();
+  }
+
+  // ---- Render customer table ----
+  function renderCustomers() {
+    const tbody = document.getElementById('customer-body');
+    tbody.innerHTML = '';
+    customers.forEach((c, i) => {
+      const planOpts = `<option value="">— none —</option>` +
+        plans.map(p => `<option value="${p.id}" ${c.currentPlanId === p.id ? 'selected' : ''}>${p.id} (${p.category})</option>`).join('');
+      tbody.innerHTML += `
+        <tr>
+          <td><input type="text" value="${c.id}" onchange="customers[${i}].id=this.value;refreshCustomerSelect()"></td>
+          <td><input type="number" value="${c.revenue}" min="0" onchange="customers[${i}].revenue=+this.value"></td>
+          <td><input type="number" value="${c.renewals}" min="0" onchange="customers[${i}].renewals=+this.value"></td>
+          <td><select onchange="customers[${i}].currentPlanId=this.value">${planOpts}</select></td>
+          <td><button class="btn btn-danger btn-sm" onclick="removeCustomer(${i})">✕</button></td>
+        </tr>`;
+    });
+    refreshCustomerSelect();
+  }
+
+  function addCustomer() {
+    customers.push({ id: 'C00' + custIdCounter++, revenue: 5000, renewals: 2, currentPlanId: '' });
+    renderCustomers();
+  }
+  function removeCustomer(i) { customers.splice(i, 1); renderCustomers(); }
+
+  function refreshCustomerSelect() {
+    // no dropdown to refresh — customer ID is entered manually
+  }
+
+  // ---- Render plan table ----
+  function renderPlans() {
+    const tbody = document.getElementById('plan-body');
+    tbody.innerHTML = '';
+    plans.forEach((p, i) => {
+      const catOpts = ['Budget', 'Standard', 'Premium'].map(c =>
+        `<option value="${c}" ${p.category === c ? 'selected' : ''}>${c}</option>`).join('');
+      const freqOpts = ['Monthly', 'Quarterly', 'Annual'].map(f =>
+        `<option value="${f}" ${p.freq === f ? 'selected' : ''}>${f}</option>`).join('');
+      tbody.innerHTML += `
+        <tr>
+          <td><input type="text" value="${p.id}" onchange="plans[${i}].id=this.value;renderCustomers()"></td>
+          <td><select onchange="plans[${i}].category=this.value">${catOpts}</select></td>
+          <td><input type="number" value="${p.price}" min="0" onchange="plans[${i}].price=+this.value"></td>
+          <td><select onchange="plans[${i}].freq=this.value">${freqOpts}</select></td>
+          <td><input type="number" value="${p.activeSubs}" min="0" onchange="plans[${i}].activeSubs=+this.value"></td>
+          <td><input type="number" value="${p.totalSubs}" min="0" onchange="plans[${i}].totalSubs=+this.value"></td>
+          <td><input type="number" value="${p.totalRevenue}" min="0" onchange="plans[${i}].totalRevenue=+this.value"></td>
+          <td><button class="btn btn-danger btn-sm" onclick="removePlan(${i})">✕</button></td>
+        </tr>`;
+    });
+  }
+
+  function addPlan() {
+    plans.push({ id: 'P00' + planIdCounter++, category: 'Standard', freq: 'Monthly', price: 99, activeSubs: 100, totalSubs: 150, totalRevenue: 9900 });
+    renderPlans();
+    renderCustomers();
+  }
+  function removePlan(i) { plans.splice(i, 1); renderPlans(); renderCustomers(); }
+
+  // ---- Weights ----
+  function updateWeights(changed) {
+    const ids = ['w1','w2','w3','w4'];
+    ids.forEach(id => {
+      document.getElementById(id + '-val').textContent = document.getElementById(id).value;
+    });
+    const total = ids.reduce((s, id) => s + +document.getElementById(id).value, 0);
+    const totalEl = document.getElementById('weight-total');
+    const remEl = document.getElementById('weight-remaining');
+    const errEl = document.getElementById('weight-error');
+
+    totalEl.textContent = total;
+
+    if (total > 10) {
+      totalEl.style.color = '#c0392b';
+      remEl.style.display = 'none';
+      errEl.style.display = 'block';
+      // Clamp: reduce the slider that was just moved back so total = 10
+      if (changed) {
+        const others = ids.filter(id => id !== changed);
+        const othersTotal = others.reduce((s, id) => s + +document.getElementById(id).value, 0);
+        const maxAllowed = Math.max(0, 10 - othersTotal);
+        document.getElementById(changed).value = maxAllowed;
+        document.getElementById(changed + '-val').textContent = maxAllowed;
+        totalEl.textContent = 10;
+        totalEl.style.color = '#1a1a1a';
+        errEl.style.display = 'none';
+      }
+    } else {
+      totalEl.style.color = '#1a1a1a';
+      errEl.style.display = 'none';
+    }
+
+    const remaining = 10 - Math.min(total, 10);
+    if (remaining === 0 && total === 10) {
+      remEl.textContent = '✓ balanced'; remEl.style.color = '#3a9870'; remEl.style.display = 'inline';
+    } else if (remaining > 0) {
+      remEl.textContent = `${remaining} remaining`; remEl.style.color = '#888'; remEl.style.display = 'inline';
+    } else {
+      remEl.style.display = 'none';
+    }
+  }
+
+  function getWeights() {
+    return { w1: +document.getElementById('w1').value, w2: +document.getElementById('w2').value,
+             w3: +document.getElementById('w3').value, w4: +document.getElementById('w4').value };
+  }
+
+  // ---- Normalise helper ----
+  function normalise(arr) {
+    const min = Math.min(...arr), max = Math.max(...arr);
+    if (max === min) return arr.map(() => 1);
+    return arr.map(v => (v - min) / (max - min));
+  }
+
+  function selectTopN(btn) {
+    document.querySelectorAll('.topn-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function getTopN() {
+    const active = document.querySelector('.topn-btn.active');
+    return active ? +active.getAttribute('data-n') : 2;
+  }
+
+  // ---- Recommendation engine ----
+  // Score = W1*Popularity + W2*Renewal_Rate + W3*Affordability + W4*Category_Match
+
+  function getCategoryMatchScore(customerCurrentPlanId, candidatePlan) {
+    if (!customerCurrentPlanId) return 0;
+    const currentPlan = plans.find(p => p.id === customerCurrentPlanId);
+    if (!currentPlan) return 0;
+    if (currentPlan.category === candidatePlan.category) return 1; // exact match
+    const adjacent = { Budget: ['Standard'], Standard: ['Budget', 'Premium'], Premium: ['Standard'] };
+    if (adjacent[currentPlan.category]?.includes(candidatePlan.category)) return 0.5;
+    return 0;
+  }
+
+  function buildWhyText(r, customer, avgRevenue, sym, currentPlanId) {
+    const parts = [];
+    const pop = parseFloat(r.breakdown.popularity);
+    const ren = parseFloat(r.breakdown.renewal);
+    const aff = parseFloat(r.breakdown.afford);
+    const cat = parseFloat(r.breakdown.catMatch);
+    const total = pop + ren + aff + cat;
+
+    // Popularity
+    if (pop > 0) {
+      const popPct = Math.round((pop / total) * 100);
+      if (r.plan.activeSubs > 350) parts.push(`This is one of the most popular plans with ${r.plan.activeSubs} active subscribers, contributing ${popPct}% of the score.`);
+      else parts.push(`Moderate popularity (${r.plan.activeSubs} active subscribers) adds ${popPct}% to the score.`);
+    }
+
+    // Renewal rate (frequency-adjusted)
+    if (ren > 0) {
+      const renPct = Math.round((ren / total) * 100);
+      const freqNote = r.freq === 'Annual' ? ' on an annual billing cycle' : r.freq === 'Quarterly' ? ' on a quarterly cycle' : '';
+      if (parseFloat(r.renewRate) >= 85) parts.push(`A strong renewal rate of ${r.renewRate}%${freqNote} indicates customers stay on this plan — contributing ${renPct}% of the score.`);
+      else if (parseFloat(r.renewRate) >= 70) parts.push(`A solid renewal rate of ${r.renewRate}%${freqNote} suggests decent customer retention, adding ${renPct}% to the score.`);
+      else parts.push(`A renewal rate of ${r.renewRate}%${freqNote} is below average; retention on this plan could be stronger.`);
+    }
+
+    // Affordability
+    if (aff > 0) {
+      const affPct = Math.round((aff / total) * 100);
+      const ratio = parseFloat(r.rawAff);
+      if (ratio < 0.15) parts.push(`At ${sym}${r.plan.price}/mo, this plan is very affordable relative to this customer's average revenue of ${sym}${Math.round(avgRevenue).toLocaleString()} — affordability drives ${affPct}% of the score.`);
+      else if (ratio < 0.4) parts.push(`The price of ${sym}${r.plan.price}/mo is reasonably affordable for this customer (${affPct}% of score).`);
+      else parts.push(`At ${sym}${r.plan.price}/mo, affordability is a stretch relative to this customer's average revenue — consider lower-tier plans.`);
+    }
+
+    // Category match
+    if (cat > 0) {
+      const catPct = Math.round((cat / total) * 100);
+      const currentPlan = plans.find(p => p.id === currentPlanId);
+      if (r.plan.category === currentPlan?.category) {
+        parts.push(`This plan is in the same category (${r.plan.category}) as the customer's current plan — a strong category match contributing ${catPct}% of the score.`);
+      } else {
+        parts.push(`This is an adjacent category to the customer's current plan, representing a natural upsell or downsell opportunity (${catPct}% of score).`);
+      }
+    } else if (currentPlanId) {
+      parts.push(`No category overlap with the customer's current plan — this is a cross-category recommendation.`);
+    } else {
+      parts.push(`No current plan on record for this customer — category match could not be computed.`);
+    }
+
+    return parts.join(' ');
+  }
+
+  function runRecommendation() {
+    if (customers.length === 0) { alert('Add at least one customer.'); return; }
+    if (plans.length === 0) { alert('Add at least one plan.'); return; }
+
+    const enteredId = document.getElementById('customer-input').value.trim();
+    const errEl = document.getElementById('customer-id-error');
+    if (!enteredId) { errEl.style.display = 'block'; errEl.textContent = 'Please enter a Customer ID.'; return; }
+    const customer = customers.find(c => c.id.toLowerCase() === enteredId.toLowerCase());
+    if (!customer) { errEl.style.display = 'block'; errEl.textContent = `Customer ID "${enteredId}" not found. Please check and try again.`; return; }
+    errEl.style.display = 'none';
+
+    const topN = getTopN();
+    const { w1, w2, w3, w4 } = getWeights();
+    const sym = getCurrencySymbol();
+    const totalWeight = w1 + w2 + w3 + w4;
+    if (totalWeight === 0) { alert('All weights are set to 0. Please distribute at least 1 point across the parameters.'); return; }
+    if (totalWeight > 10) { alert('Total weight exceeds 10. Please reduce one or more sliders before running.'); return; }
+
+    const avgRevenue = customer.renewals > 0 ? customer.revenue / customer.renewals : customer.revenue;
+
+    // Read current plan directly from customer object
+    const currentPlanId = customer.currentPlanId || null;
+
+    // Raw metrics
+    const rawPop   = plans.map(p => p.activeSubs);
+    // Frequency-adjusted renewal rate: base rate × multiplier
+    // Monthly=1, Quarterly=2, Annual=4 — reflects stronger customer commitment for longer cycles
+    const freqMultiplier = { Monthly: 1, Quarterly: 2, Annual: 4 };
+    const rawRenew = plans.map(p => {
+      const baseRate = p.totalSubs > 0 ? p.activeSubs / p.totalSubs : 0;
+      const multiplier = freqMultiplier[p.freq] || 1;
+      return baseRate * multiplier;
+    });
+    const rawAff   = plans.map(p => {
+      const ratio = avgRevenue > 0 ? p.price / avgRevenue : 1;
+      return ratio > 0 ? 1 / ratio : 0;
+    });
+    const rawCat   = plans.map(p => getCategoryMatchScore(currentPlanId, p));
+
+    const normPop   = normalise(rawPop);
+    const normRenew = normalise(rawRenew);
+    const normAff   = normalise(rawAff);
+    const normCat   = normalise(rawCat);
+
+    const scored = plans.map((p, i) => {
+      const score = w1 * normPop[i] + w2 * normRenew[i] + w3 * normAff[i] + w4 * normCat[i];
+      const baseRenewRate = p.totalSubs > 0 ? (p.activeSubs / p.totalSubs) * 100 : 0;
+      return {
+        plan: p,
+        score,
+        breakdown: {
+          popularity: (w1 * normPop[i]).toFixed(2),
+          renewal:    (w2 * normRenew[i]).toFixed(2),
+          afford:     (w3 * normAff[i]).toFixed(2),
+          catMatch:   (w4 * normCat[i]).toFixed(2),
+        },
+        rawAff: (p.price / (avgRevenue || 1)).toFixed(2),
+        renewRate: baseRenewRate.toFixed(1),
+        freq: p.freq || 'Monthly'
+      };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const results = scored.slice(0, topN);
+    const maxScore = results[0]?.score || 1;
+
+    const catClass = { Budget: 'cat-budget', Standard: 'cat-standard', Premium: 'cat-premium' };
+    const rankClass = (i) => i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+
+    const currentPlan = plans.find(p => p.id === currentPlanId);
+    const currentPlanNote = currentPlan
+      ? `Current plan: <strong>${currentPlan.id}</strong> (${currentPlan.category}, ${sym}${currentPlan.price}/mo)`
+      : `<span style="color:#c0392b;">No current plan mapped — category match scoring disabled</span>`;
+
+    const html = `
+      <div style="font-size:13px;color:#6b6b6b;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <span>Showing top ${results.length} plans for <strong>${customer.id}</strong></span>
+        <span style="color:#ccc;">·</span>
+        <span>Avg revenue: <strong>${sym}${Math.round(avgRevenue).toLocaleString()}</strong></span>
+        <span style="color:#ccc;">·</span>
+        <span>${currentPlanNote}</span>
+      </div>
+      <div class="result-grid">
+        ${results.map((r, i) => `
+          <div class="result-item ${rankClass(i)}">
+            <div class="rank-badge">${i + 1}</div>
+            <div class="result-info">
+              <div class="result-plan-name">
+                ${r.plan.id}
+                &nbsp;<span class="cat-badge ${catClass[r.plan.category]}">${r.plan.category}</span>
+              </div>
+              <div class="result-plan-meta">
+                ${sym}${r.plan.price}/mo &nbsp;·&nbsp; ${r.freq} billing &nbsp;·&nbsp; ${r.plan.activeSubs} active subs
+                &nbsp;·&nbsp; Renewal rate: ${r.renewRate}%
+                &nbsp;·&nbsp; Affordability ratio: ${r.rawAff}
+              </div>
+              <div class="why-text">${buildWhyText(r, customer, avgRevenue, sym, currentPlanId)}</div>
+              <div class="breakdown">
+                <span>Popularity: ${r.breakdown.popularity}</span>
+                <span>Renewal: ${r.breakdown.renewal}</span>
+                <span>Affordability: ${r.breakdown.afford}</span>
+                <span>Category match: ${r.breakdown.catMatch}</span>
+              </div>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" style="width:${Math.round((r.score / maxScore) * 100)}%"></div>
+              </div>
+              <div class="score-label">score</div>
+            </div>
+            <div class="score-num">${r.score.toFixed(2)}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    document.getElementById('results-area').innerHTML = html;
+  }
+
+  // ---- Currency ----
+  function getCurrencySymbol() {
+    return document.getElementById('currency-select').value === 'INR' ? '₹' : '$';
+  }
+
+  function onCurrencyChange() {
+    const sym = getCurrencySymbol();
+    document.querySelectorAll('.currency-sym').forEach(el => el.textContent = sym);
+  }
+
+  // ---- CSV Upload ----
+  function handleCSVUpload(event) {
+    const file = event.target.files[0];
+    const errEl = document.getElementById('csv-error');
+    errEl.style.display = 'none';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.trim().split('\n').filter(l => l.trim() !== '');
+      if (lines.length === 0) { showCSVError('CSV file is empty.'); return; }
+
+      // Detect if first line is a header
+      const firstCells = lines[0].split(',').map(s => s.trim().toLowerCase());
+      const hasHeader = isNaN(firstCells[1]);
+      const dataLines = hasHeader ? lines.slice(1) : lines;
+
+      if (dataLines.length === 0) { showCSVError('No data rows found after header.'); return; }
+
+      const parsed = [];
+      for (let i = 0; i < dataLines.length; i++) {
+        const cols = dataLines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+        if (cols.length < 3) { showCSVError(`Row ${i + 1 + (hasHeader ? 1 : 0)}: expected at least 3 columns (customer_id, lifetime_revenue, renewal_count, current_plan_id*).`); return; }
+        const id = cols[0];
+        const revenue = parseFloat(cols[1]);
+        const renewals = parseInt(cols[2]);
+        const currentPlanId = cols[3] || '';
+        if (!id) { showCSVError(`Row ${i + 1 + (hasHeader ? 1 : 0)}: Customer ID is empty.`); return; }
+        if (isNaN(revenue) || revenue < 0) { showCSVError(`Row ${i + 1 + (hasHeader ? 1 : 0)}: Invalid revenue value "${cols[1]}".`); return; }
+        if (isNaN(renewals) || renewals < 0) { showCSVError(`Row ${i + 1 + (hasHeader ? 1 : 0)}: Invalid renewal count "${cols[2]}".`); return; }
+        parsed.push({ id, revenue, renewals, currentPlanId });
+      }
+
+      customers = parsed;
+      custIdCounter = customers.length + 1;
+      renderCustomers();
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function showCSVError(msg) {
+    const el = document.getElementById('csv-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+    document.getElementById('csv-upload').value = '';
+  }
+
+  function clearResults() {
+    document.getElementById('results-area').innerHTML = '<div class="empty">Run a recommendation to see results here.</div>';
+  }
+
+  // Init
+  seedData();
+</script>
+</body>
+</html>
