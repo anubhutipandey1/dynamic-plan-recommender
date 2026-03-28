@@ -8,7 +8,7 @@ An interactive, browser-based tool that recommends the most suitable SaaS plans 
 
 ## The Problem
 
-Most SaaS businesses struggle to match the right plan to the right customer — especially at scale. Sales teams rely on gut feel, and customers are left to navigate feature tables on their own. This leads to under-selling, over-selling, and high churn when customers land on the wrong plan.
+Most SaaS businesses struggle to match the right plan to the right customer especially at scale. Sales teams rely on gut feel, and customers are left to navigate feature tables on their own. This leads to under-selling, over-selling, and high churn when customers land on the wrong plan.
 
 This project explores a data-driven solution: a recommendation engine that scores and ranks plans for each customer based on their profile and usage patterns.
 
