@@ -2,13 +2,13 @@
 
 An interactive, browser-based tool that recommends the most suitable SaaS plans for customers using a weighted scoring algorithm — built from a product specification I designed as a PM.
 
-**Live demo:** [your-username.github.io/dynamic-plan-recommender](https://your-username.github.io/dynamic-plan-recommender)
+**Live demo:** [your-username.github.io/dynamic-plan-recommender](https://anubhutipandey1.github.io/dynamic-plan-recommender)
 
 ---
 
 ## The Problem
 
-Most SaaS businesses struggle to match the right plan to the right customer especially at scale. Sales teams rely on gut feel, and customers are left to navigate feature tables on their own. This leads to under-selling, over-selling, and high churn when customers land on the wrong plan.
+Most SaaS businesses struggle to match the right plan to the right customer especially at scale. Customers are left to navigate feature tables on their own. This leads to under-selling, over-selling, and high churn when customers land on the wrong plan.
 
 This project explores a data-driven solution: a recommendation engine that scores and ranks plans for each customer based on their profile and usage patterns.
 
@@ -85,7 +85,7 @@ Plans are ranked in descending order of score. The user selects Top 2, Top 3, or
 | CSV upload for customer data | Real-world sales teams maintain customer lists in spreadsheets — uploading a CSV is far faster than entering rows manually. Auto-detects headers, validates each row, and shows specific error messages on bad data |
 | Currency selector ($ / ₹) | SaaS businesses operate across markets — a single toggle switches all price displays between USD and INR without re-entering any data |
 | Configurable weights via sliders | Different businesses prioritise differently — a budget-focused team would increase W3, an enterprise sales team might increase W4 |
-| Normalised scoring | Raw numbers (e.g. 450 active subs vs 0.82 renewal rate) can't be directly compared — normalisation puts them on the same scale |
+| Normalised scoring | renewal rate of plan with annual billing frequency vs a plan with monthly billing frequebcy can't be put on same scale, hnece the addition of Frequency multiplier |
 | Customer ID text input instead of dropdown | A dropdown grows unwieldy as the customer list scales. A text input is faster for users who already know the ID, and shows a specific inline error if the ID isn't found |
 | Top N as toggle buttons (Top 2 / Top 3 / Top 5) | A sales rep needs the top 2–3 options to present, not a long ranked table. Fixed buttons are faster to use than a dropdown for a small set of choices |
 
