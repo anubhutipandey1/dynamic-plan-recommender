@@ -160,7 +160,7 @@ This requires a full customer–plan interaction history (not just the current p
 
 ## Known Limitations
 
-This is a portfolio prototype, not a production system. Being transparent about these constraints is part of thinking like a PM.
+This is a portfolio prototype, not a production system.
 
 **Affordability uses revenue-from-customer, not customer budget.** Average revenue is computed from what the customer has historically paid — not their actual spending capacity. A long-tenure customer who spent $48,000 over 10 renewals looks "high-value", but that doesn't mean they can afford a more expensive plan. In a real system, budget data or explicit willingness-to-pay signals would be needed.
 
