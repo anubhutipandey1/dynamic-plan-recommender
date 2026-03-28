@@ -200,4 +200,4 @@ The current prototype is intentionally rule-based. The manual weights are a desi
 
 I'm a Product Manager interested in data-driven product thinking, growth, and building tools that bridge the gap between product strategy and engineering execution.
 
-[LinkedIn](https://linkedin.com/in/your-profile) · [Portfolio](https://your-portfolio.com)
+[LinkedIn](https://linkedin.com/in/anubhutipandey12)
